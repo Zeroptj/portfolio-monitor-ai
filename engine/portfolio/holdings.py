@@ -14,10 +14,11 @@ load_dotenv()
 with open("../config.yaml", "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
-# สร้าง database
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "../data/portfolio.db")
-engine = create_engine(f"sqlite:///{DB_PATH}")
+# สร้าง database — DATABASE_URL env var ใช้ตอน deploy (Fly.io volume: sqlite:////data/portfolio.db)
+BASE_DIR  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_default  = f"sqlite:///{os.path.join(BASE_DIR, '../data/portfolio.db')}"
+_db_url   = os.getenv("DATABASE_URL", _default)
+engine    = create_engine(_db_url)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 

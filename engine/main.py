@@ -36,9 +36,14 @@ print(f"[startup] AI features: {'ENABLED' if AI_ENABLED else 'DISABLED'}")
 # ── FastAPI app ──────────────────────────────────────────────────────────────
 app = FastAPI(title="Portfolio Monitor API")
 
+_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+_frontend_url = os.getenv("FRONTEND_URL", "").strip()
+if _frontend_url:
+    _origins.append(_frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

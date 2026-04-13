@@ -14,6 +14,9 @@ import fs         from "fs"
 const FASTAPI_BASE = process.env.FASTAPI_URL ?? "http://127.0.0.1:8000"
 const ENGINE_DIR   = path.join(process.cwd(), "..", "engine")
 
+// Remote URL (production: Fly.io) — always use FastAPI, no subprocess fallback
+const IS_REMOTE = !FASTAPI_BASE.startsWith("http://127") && !FASTAPI_BASE.startsWith("http://localhost")
+
 // ── FastAPI mode ─────────────────────────────────────────────────────────────
 
 /** ตรวจว่า FastAPI กำลังรันอยู่ (cache 30s) */
@@ -21,6 +24,9 @@ let _fastapiAlive: boolean | null = null
 let _fastapiChecked = 0
 
 async function isFastAPIAlive(): Promise<boolean> {
+  // Remote URL → always true (Fly.io auto-starts on request)
+  if (IS_REMOTE) return true
+
   const now = Date.now()
   if (_fastapiAlive !== null && now - _fastapiChecked < 30_000) {
     return _fastapiAlive
