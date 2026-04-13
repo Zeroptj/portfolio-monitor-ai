@@ -1,0 +1,122 @@
+# ================================
+# Portfolio
+# ================================
+portfolio:
+  currency: THB
+  usd_to_thb: auto
+  benchmark: SPY
+
+# ================================
+# Assets
+# ================================
+assets:
+  crypto:
+    - symbol: BTC
+      name: Bitcoin
+    - symbol: ETH
+      name: Ethereum
+
+  stocks:
+    - symbol: AAPL
+      name: Apple
+    - symbol: NVDA
+      name: NVIDIA
+
+  etf:
+    # All class world index
+    - { symbol: VT,  name: "Vanguard Total World Stock Index Fund ETF",exchange: arcx }
+    # US Large-cap
+    - { symbol: SPY,  name: "SPDR S&P 500 ETF Trust",                  exchange: arcx }
+    - { symbol: IVV,  name: "iShares Core S&P 500 ETF",                exchange: arcx }
+    - { symbol: VOO,  name: "Vanguard S&P 500 ETF",                    exchange: arcx }
+    # US Broad / Style
+    - { symbol: VTI,  name: "Vanguard Total Stock Market ETF",         exchange: arcx }
+    - { symbol: SPYG, name: "SPDR Portfolio S&P 500 Growth ETF",       exchange: arcx }
+    - { symbol: SPYV, name: "SPDR Portfolio S&P 500 Value ETF",        exchange: arcx }
+    # Dividend
+    - { symbol: FDVV, name: "Fidelity High Dividend ETF",              exchange: arcx }
+    # Active / Thematic
+    - { symbol: AKRE, name: "Akre Focus ETF",                          exchange: arcx }
+    - { symbol: FBT,  name: "First Trust NYSE Arca Biotech ETF",       exchange: arcx }
+    - { symbol: NASA, name: "Tema Space Innovators ETF",               exchange: arcx }
+    - { symbol: IVEP, name: "Dan Ives Wedbush AI Power & Infra ETF",  exchange: arcx }
+    # Options / Covered Call
+    - { symbol: CVRD, name: "Madison Covered Call ETF",                exchange: arcx }
+    - { symbol: OARK, name: "YieldMax Innovation Option Income ETF",   exchange: arcx }
+    # Commodities
+    - { symbol: GLD,  name: "SPDR Gold Shares",                        exchange: arcx }
+    # Nasdaq
+    - { symbol: QQQ,  name: "Invesco QQQ Trust",                       exchange: arcx }
+    # Bonds
+    - { symbol: TLT,  name: "iShares 20+ Year Treasury Bond ETF",      exchange: arcx }
+    - { symbol: IBCA, name: "iShares iBonds Dec 2035 Term Corp ETF",   exchange: arcx }
+    - { symbol: ACVT, name: "Advent Convertible Bond ETF",             exchange: arcx }
+    # Crypto ETF
+    - { symbol: MSBT, name: "Morgan Stanley Bitcoin Trust",            exchange: arcx }
+    - { symbol: SOEZ, name: "Franklin Solana ETF",                     exchange: arcx }
+
+
+  commodities:
+    - symbol: GC=F
+      name: Gold
+    - symbol: CL=F
+      name: Oil
+
+# ================================
+# Morningstar
+# ================================
+morningstar:
+  fallback_to_yfinance: true
+
+# ================================
+# Refresh
+# ================================
+refresh:
+  price_interval_seconds: 300
+  ai_summary_time: "08:00"
+  timezone: "Asia/Bangkok"
+
+# ================================
+# Optimizer
+# ================================
+optimizer:
+  lookback_days: 365
+  risk_free_rate: 0.03
+  rebalance_threshold: 0.10
+  rebalance_check_days: 90
+  models:
+    - max_sharpe
+    - hrp
+    - min_volatility
+    - risk_parity
+    - equal_weight
+
+# ================================
+# AI
+# ================================
+ai:
+  model: gemini-3-flash-preview
+  max_tokens: 500
+  language: "th"
+  summary_prompt: |
+    วิเคราะห์พอร์ตการลงทุนนี้เป็นภาษาไทย กระชับ ไม่เกิน 200 คำ
+    สรุป 3 หัวข้อเท่านั้น:
+    1. ผลการดำเนินงาน (return, sharpe, drawdown)
+    2. ความเสี่ยงที่น่ากังวล
+    3. สิ่งที่ควรระวังวันนี้
+
+# ================================
+# News
+# ================================
+news:
+  language: en
+  max_articles: 10
+  lookback_hours: 24
+
+# ================================
+# Server
+# ================================
+server:
+  host: 127.0.0.1
+  port: 8000
+  frontend_port: 3000
