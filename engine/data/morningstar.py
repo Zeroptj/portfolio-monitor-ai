@@ -297,65 +297,6 @@ def scrape_etf(ticker: str, exchange: str, max_retries: int = 3) -> bool:
     return False
 
 
-# ─── Cache-first Getters ─────────────────────────────────────────────────────
-
-def get_etf_holdings(etf: str) -> list[dict]:
-    """
-    Cache-first: คืน top holdings จาก DB
-    ถ้าไม่มีข้อมูล → scrape ทันที แล้วคืนจาก DB
-    Returns [{"name": str, "weight_pct": float}, ...]
-    """
-    db = SessionLocal()
-    try:
-        rows = db.query(ETFHolding).filter(ETFHolding.etf == etf).all()
-        if rows:
-            return [{"name": r.name, "weight_pct": r.weight} for r in rows]
-    finally:
-        db.close()
-
-    print(f"[morningstar] {etf} holdings not in DB — scraping now...")
-    scrape_etf(etf, _get_exchange(etf))
-
-    db = SessionLocal()
-    try:
-        rows = db.query(ETFHolding).filter(ETFHolding.etf == etf).all()
-        return [{"name": r.name, "weight_pct": r.weight} for r in rows]
-    finally:
-        db.close()
-
-
-def get_etf_allocation(etf: str, alloc_type: str = "sector") -> list[dict]:
-    """
-    Cache-first: คืน sector หรือ region allocation จาก DB
-    ถ้าไม่มีข้อมูล → scrape ทันที แล้วคืนจาก DB
-    alloc_type: "sector" | "region"
-    Returns [{"name": str, "weight": float}, ...]
-    """
-    db = SessionLocal()
-    try:
-        rows = db.query(ETFAllocation).filter(
-            ETFAllocation.etf  == etf,
-            ETFAllocation.type == alloc_type,
-        ).all()
-        if rows:
-            return [{"name": r.name, "weight": r.weight} for r in rows]
-    finally:
-        db.close()
-
-    print(f"[morningstar] {etf} {alloc_type} not in DB — scraping now...")
-    scrape_etf(etf, _get_exchange(etf))
-
-    db = SessionLocal()
-    try:
-        rows = db.query(ETFAllocation).filter(
-            ETFAllocation.etf  == etf,
-            ETFAllocation.type == alloc_type,
-        ).all()
-        return [{"name": r.name, "weight": r.weight} for r in rows]
-    finally:
-        db.close()
-
-
 # ─── Public Job ──────────────────────────────────────────────────────────────
 
 def refresh_etf_data() -> dict[str, bool]:

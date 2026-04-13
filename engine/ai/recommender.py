@@ -20,7 +20,6 @@ load_dotenv(os.path.join(ROOT_DIR, ".env"))
 from portfolio.holdings import SessionLocal, Holding, init_db
 from data.price_feed import get_prices
 from portfolio.metrics import get_portfolio_metrics
-from portfolio.optimizer import run_all_models
 
 with open(os.path.join(ENGINE_DIR, "config.yaml"), "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
@@ -131,7 +130,7 @@ def _optimizer_summary(optimizer_results: dict) -> str:
 
 # ─── Gemini Calls ─────────────────────────────────────────────────────────────
 
-def get_recommendation(question: str, context_days: int = 365) -> str:
+def get_recommendation(question: str) -> str:
     """
     ตอบคำถามเกี่ยวกับพอร์ตด้วย Gemini
     Returns: คำตอบเป็น string
@@ -144,38 +143,6 @@ def get_recommendation(question: str, context_days: int = 365) -> str:
         messages=[
             {"role": "system", "content": SYSTEM_BASE},
             {"role": "user",   "content": f"{snapshot}\n\nคำถาม: {question}"},
-        ],
-        max_tokens=AI_CFG.get("max_tokens", 500),
-    )
-    return response.choices[0].message.content
-
-
-def get_rebalance_advice(optimizer_results: dict | None = None) -> str:
-    """
-    แนะนำ rebalance plan จาก optimizer results
-    ถ้า optimizer_results=None → run ใหม่เลย
-    Returns: คำแนะนำเป็น string
-    """
-    if optimizer_results is None:
-        print("[ai/recommender] Running optimizer...")
-        optimizer_results = run_all_models()
-
-    snapshot = _portfolio_snapshot()
-    opt_text = _optimizer_summary(optimizer_results)
-    prompt   = (
-        f"{snapshot}\n\n"
-        f"{opt_text}\n\n"
-        "จากผล optimizer ทั้ง 5 model ด้านบน "
-        "ช่วยสรุปว่าควร rebalance พอร์ตอย่างไร "
-        "และ model ไหนเหมาะกับสไตล์การลงทุนแบบไหน"
-    )
-
-    print("[ai/recommender] Calling Groq for rebalance advice...")
-    response = _groq().chat.completions.create(
-        model=AI_CFG["model"],
-        messages=[
-            {"role": "system", "content": SYSTEM_BASE},
-            {"role": "user",   "content": prompt},
         ],
         max_tokens=AI_CFG.get("max_tokens", 500),
     )

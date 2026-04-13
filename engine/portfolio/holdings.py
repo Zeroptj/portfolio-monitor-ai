@@ -66,17 +66,6 @@ class PriceHistory(Base):
     close       = Column(Float)
     updated_at  = Column(DateTime, default=datetime.now)
 
-# ตาราง asset_info (sector/region จาก yfinance)
-class AssetInfo(Base):
-    __tablename__ = "asset_info"
-    id          = Column(Integer, primary_key=True)
-    symbol      = Column(String, nullable=False)
-    asset_type  = Column(String)
-    sector      = Column(String)
-    industry    = Column(String)
-    country     = Column(String)
-    updated_at  = Column(DateTime, default=datetime.now)
-
 # ตาราง etf_holdings (จาก morningstar)
 class ETFHolding(Base):
     __tablename__ = "etf_holdings"

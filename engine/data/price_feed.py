@@ -5,7 +5,6 @@ import yaml
 import requests
 import yfinance as yf
 from datetime import datetime, timedelta
-from sqlalchemy import and_
 
 ENGINE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROOT_DIR   = os.path.dirname(ENGINE_DIR)

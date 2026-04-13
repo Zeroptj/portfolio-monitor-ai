@@ -181,7 +181,6 @@ def _quasi_diag(link: np.ndarray, n: int) -> list[int]:
     """Sort indices ตาม hierarchical clustering result"""
     link = link.astype(int)
     sort_ix = [link[-1, 0], link[-1, 1]]
-    num_items = link[-1, 3]
 
     while max(sort_ix) >= n:
         new_sort = []

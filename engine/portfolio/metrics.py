@@ -250,27 +250,6 @@ def get_asset_metrics(symbol: str, days: int = 365) -> dict:
     return metrics
 
 
-def get_benchmark_comparison(days: int = 365) -> dict:
-    """
-    เปรียบเทียบพอร์ตกับ benchmark
-    Convenience wrapper สำหรับ API endpoint
-    """
-    db = SessionLocal()
-    try:
-        holdings = db.query(Holding).all()
-    finally:
-        db.close()
-
-    if not holdings:
-        return {}
-
-    symbols      = list({h.symbol for h in holdings})
-    price_df     = _history_df(symbols, days=days)
-    value_series = _portfolio_value_series(holdings, price_df)
-
-    return _benchmark_metrics(value_series.pct_change().dropna())
-
-
 # ─── CLI test ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
