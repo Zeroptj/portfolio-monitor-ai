@@ -186,6 +186,10 @@ async function callFastAPI(
           question: flags.question as string,
         })
       }
+      case "ai-allocation":
+        return await apiFetch("GET", `${base}/ai/allocation`)
+      case "ai-optimizer":
+        return await apiFetch("POST", `${base}/ai/optimizer-advice`, { model: "all" })
 
       // News
       case "news": {

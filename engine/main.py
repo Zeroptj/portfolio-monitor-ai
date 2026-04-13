@@ -11,6 +11,7 @@ All imports happen once at startup → ไม่มี subprocess overhead
 import os
 import sys
 import yaml
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -19,9 +20,18 @@ ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR   = os.path.dirname(ENGINE_DIR)
 sys.path.insert(0, ENGINE_DIR)
 
+load_dotenv(os.path.join(ROOT_DIR, ".env"))
+
 # ── Load config ──────────────────────────────────────────────────────────────
 with open(os.path.join(ROOT_DIR, "config.yaml"), "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
+
+# ── AI feature flag ───────────────────────────────────────────────────────────
+_groq_key  = os.getenv("GROQ_API_KEY", "").strip()
+_ai_flag   = os.getenv("AI_ENABLED", "true").lower()
+AI_ENABLED = bool(_groq_key) and _ai_flag != "false"
+
+print(f"[startup] AI features: {'ENABLED' if AI_ENABLED else 'DISABLED'}")
 
 # ── FastAPI app ──────────────────────────────────────────────────────────────
 app = FastAPI(title="Portfolio Monitor API")
@@ -33,7 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Lazy imports (ทำที่นี่เพื่อให้ startup เร็ว) ──────────────────────────────
+# ── Imports ──────────────────────────────────────────────────────────────────
 from portfolio.holdings import (
     SessionLocal, Holding, ETFHolding, ETFAllocation,
     get_holdings, add_holding, update_holding, delete_holding, init_db,
@@ -41,9 +51,11 @@ from portfolio.holdings import (
 from data.price_feed import get_prices, fetch_fx_rate, get_price_histories_batch
 from portfolio.metrics import get_portfolio_metrics, get_asset_metrics
 from portfolio.optimizer import run_all_models, run_model, check_rebalance
-from ai.summary import get_daily_summary
-from ai.recommender import get_recommendation
 from data.news_feed import get_news
+
+if AI_ENABLED:
+    from ai.summary import get_daily_summary
+    from ai.recommender import get_recommendation, get_allocation_insight, get_optimizer_advice
 
 init_db()
 
@@ -201,23 +213,19 @@ def api_allocation():
     db2 = SessionLocal()
     try:
         etf_symbols = [h.symbol for h in holdings if h.asset_type == "etf"]
-        by_sector: dict[str, float] = {}
-        by_region: dict[str, float] = {}
-        by_etf: dict[str, list]     = {}
+        by_sector:   dict[str, float] = {}
+        by_exposure: dict[str, float] = {}
+        by_region:   dict[str, float] = {}
+        by_etf:      dict[str, list]  = {}
 
         for sym in etf_symbols:
             etf_weight = values.get(sym, 0) / total
-            sec_rows = db2.query(ETFAllocation).filter(
-                ETFAllocation.etf == sym, ETFAllocation.type == "sector"
-            ).all()
-            for r in sec_rows:
-                by_sector[r.name] = round(by_sector.get(r.name, 0) + r.weight * etf_weight, 2)
-
-            reg_rows = db2.query(ETFAllocation).filter(
-                ETFAllocation.etf == sym, ETFAllocation.type == "region"
-            ).all()
-            for r in reg_rows:
-                by_region[r.name] = round(by_region.get(r.name, 0) + r.weight * etf_weight, 2)
+            for alloc_type, target in [("sector", by_sector), ("exposure", by_exposure), ("region", by_region)]:
+                rows = db2.query(ETFAllocation).filter(
+                    ETFAllocation.etf == sym, ETFAllocation.type == alloc_type
+                ).all()
+                for r in rows:
+                    target[r.name] = round(target.get(r.name, 0) + r.weight * etf_weight, 2)
 
             etf_rows = db2.query(ETFHolding).filter(ETFHolding.etf == sym).all()
             by_etf[sym] = [{"name": r.name, "weight": r.weight} for r in etf_rows]
@@ -225,11 +233,12 @@ def api_allocation():
         db2.close()
 
     return {
-        "by_asset":  by_asset,
-        "by_type":   by_type,
-        "by_sector": by_sector,
-        "by_region": by_region,
-        "by_etf":    by_etf,
+        "by_asset":    by_asset,
+        "by_type":     by_type,
+        "by_sector":   by_sector,
+        "by_exposure": by_exposure,
+        "by_region":   by_region,
+        "by_etf":      by_etf,
     }
 
 
@@ -248,13 +257,56 @@ def api_rebalance():
 
 # ─── AI ──────────────────────────────────────────────────────────────────────
 
-@app.get("/ai/summary")
-def api_ai_summary(refresh: bool = False):
-    return get_daily_summary(force_refresh=refresh)
+@app.get("/ai/status")
+def api_ai_status():
+    return {"enabled": AI_ENABLED}
 
-@app.post("/ai/recommend")
-def api_ai_recommend(body: RecommendRequest):
-    return {"answer": get_recommendation(body.question)}
+if AI_ENABLED:
+    @app.get("/ai/summary")
+    def api_ai_summary(refresh: bool = False):
+        return get_daily_summary(force_refresh=refresh)
+
+    @app.post("/ai/recommend")
+    def api_ai_recommend(body: RecommendRequest):
+        return {"answer": get_recommendation(body.question)}
+
+    @app.get("/ai/allocation")
+    def api_ai_allocation():
+        db = SessionLocal()
+        try:
+            holdings = db.query(Holding).all()
+        finally:
+            db.close()
+        if not holdings:
+            return {"insight": "No holdings"}
+        symbols        = [h.symbol for h in holdings]
+        current_prices = get_prices(symbols)
+        values         = {h.symbol: h.quantity * current_prices.get(h.symbol, 0) for h in holdings}
+        total          = sum(values.values()) or 1
+        by_type: dict[str, float] = {}
+        for h in holdings:
+            t = h.asset_type or "other"
+            by_type[t] = round(by_type.get(t, 0) + values[h.symbol] / total * 100, 2)
+        by_sector: dict[str, float] = {}
+        by_exposure: dict[str, float] = {}
+        by_region: dict[str, float] = {}
+        db2 = SessionLocal()
+        try:
+            etf_syms = [h.symbol for h in holdings if h.asset_type == "etf"]
+            for sym in etf_syms:
+                etf_weight = values.get(sym, 0) / total
+                for at, target in [("sector", by_sector), ("exposure", by_exposure), ("region", by_region)]:
+                    for r in db2.query(ETFAllocation).filter(ETFAllocation.etf == sym, ETFAllocation.type == at).all():
+                        target[r.name] = round(target.get(r.name, 0) + r.weight * etf_weight, 2)
+        finally:
+            db2.close()
+        alloc = {"by_type": by_type, "by_sector": by_sector, "by_exposure": by_exposure, "by_region": by_region}
+        return {"insight": get_allocation_insight(alloc)}
+
+    @app.post("/ai/optimizer-advice")
+    def api_ai_optimizer_advice(body: OptimizerRequest):
+        results = run_all_models() if body.model == "all" else {body.model: run_model(body.model)}
+        return {"advice": get_optimizer_advice(results), "results": results}
 
 
 # ─── News ────────────────────────────────────────────────────────────────────

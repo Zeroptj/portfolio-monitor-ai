@@ -12,8 +12,6 @@ import yaml
 from datetime import datetime
 from dotenv import load_dotenv
 
-import google.generativeai as genai
-
 ENGINE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROOT_DIR   = os.path.dirname(ENGINE_DIR)
 sys.path.insert(0, ENGINE_DIR)
@@ -28,7 +26,15 @@ with open(os.path.join(ROOT_DIR, "config.yaml"), "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
 AI_CFG = config["ai"]
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+_groq_client = None
+
+def _groq():
+    global _groq_client
+    if _groq_client is None:
+        from groq import Groq
+        _groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    return _groq_client
 
 
 # ─── Context Builder ─────────────────────────────────────────────────────────
@@ -97,14 +103,16 @@ def generate_summary() -> str:
     context       = _build_portfolio_context()
     system_prompt = AI_CFG.get("summary_prompt", "วิเคราะห์พอร์ตการลงทุนนี้เป็นภาษาไทย")
 
-    model = genai.GenerativeModel(
-        model_name=AI_CFG["model"],
-        system_instruction=system_prompt,
+    print("[ai/summary] Calling Groq...")
+    response = _groq().chat.completions.create(
+        model=AI_CFG["model"],
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": f"ข้อมูลพอร์ตปัจจุบัน:\n\n{context}"},
+        ],
+        max_tokens=AI_CFG.get("max_tokens", 500),
     )
-
-    print("[ai/summary] Calling Gemini...")
-    response     = model.generate_content(f"ข้อมูลพอร์ตปัจจุบัน:\n\n{context}")
-    summary_text = response.text
+    summary_text = response.choices[0].message.content
     today        = datetime.now().strftime("%Y-%m-%d")
 
     db = SessionLocal()

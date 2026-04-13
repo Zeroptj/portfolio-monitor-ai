@@ -11,8 +11,6 @@ import sys
 import yaml
 from dotenv import load_dotenv
 
-import google.generativeai as genai
-
 ENGINE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROOT_DIR   = os.path.dirname(ENGINE_DIR)
 sys.path.insert(0, ENGINE_DIR)
@@ -28,12 +26,20 @@ with open(os.path.join(ROOT_DIR, "config.yaml"), "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
 AI_CFG = config["ai"]
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-SYSTEM_BASE = """คุณเป็น AI financial advisor ที่เชี่ยวชาญด้านการลงทุน
-ตอบเป็นภาษาไทย กระชับ ตรงประเด็น
-ไม่แนะนำให้ซื้อขายเฉพาะเจาะจง แต่ให้ข้อมูลและมุมมองที่เป็นประโยชน์
-คำนึงถึงความเสี่ยงและ diversification เสมอ"""
+_groq_client = None
+
+def _groq():
+    global _groq_client
+    if _groq_client is None:
+        from groq import Groq
+        _groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    return _groq_client
+
+SYSTEM_BASE = """You are an AI financial advisor specializing in investment portfolio analysis.
+Respond in English. Be concise and to the point.
+Do not give specific buy/sell recommendations, but provide useful data-driven insights.
+Always consider risk and diversification."""
 
 
 # ─── Context Builders ────────────────────────────────────────────────────────
@@ -131,14 +137,17 @@ def get_recommendation(question: str, context_days: int = 365) -> str:
     Returns: คำตอบเป็น string
     """
     snapshot = _portfolio_snapshot()
-    model    = genai.GenerativeModel(
-        model_name=AI_CFG["model"],
-        system_instruction=SYSTEM_BASE,
-    )
 
-    print("[ai/recommender] Calling Gemini for recommendation...")
-    response = model.generate_content(f"{snapshot}\n\nคำถาม: {question}")
-    return response.text
+    print("[ai/recommender] Calling Groq for recommendation...")
+    response = _groq().chat.completions.create(
+        model=AI_CFG["model"],
+        messages=[
+            {"role": "system", "content": SYSTEM_BASE},
+            {"role": "user",   "content": f"{snapshot}\n\nคำถาม: {question}"},
+        ],
+        max_tokens=AI_CFG.get("max_tokens", 500),
+    )
+    return response.choices[0].message.content
 
 
 def get_rebalance_advice(optimizer_results: dict | None = None) -> str:
@@ -161,14 +170,113 @@ def get_rebalance_advice(optimizer_results: dict | None = None) -> str:
         "และ model ไหนเหมาะกับสไตล์การลงทุนแบบไหน"
     )
 
-    model = genai.GenerativeModel(
-        model_name=AI_CFG["model"],
-        system_instruction=SYSTEM_BASE,
+    print("[ai/recommender] Calling Groq for rebalance advice...")
+    response = _groq().chat.completions.create(
+        model=AI_CFG["model"],
+        messages=[
+            {"role": "system", "content": SYSTEM_BASE},
+            {"role": "user",   "content": prompt},
+        ],
+        max_tokens=AI_CFG.get("max_tokens", 500),
+    )
+    return response.choices[0].message.content
+
+
+# ─── Allocation Insight ──────────────────────────────────────────────────────
+
+def get_allocation_insight(alloc: dict) -> str:
+    """
+    วิเคราะห์ portfolio allocation — ส่งแค่ summary ไม่ใช่ข้อมูลดิบทั้งหมด
+    """
+    def _top(d: dict, n: int = 5) -> str:
+        return ", ".join(
+            f"{k}={v:.1f}%" for k, v in sorted(d.items(), key=lambda x: -x[1])[:n]
+        )
+
+    lines = ["=== Portfolio Allocation ==="]
+    if alloc.get("by_type"):
+        lines.append(f"By Type       : {_top(alloc['by_type'], 6)}")
+    if alloc.get("by_sector"):
+        lines.append(f"By Sector     : {_top(alloc['by_sector'])}")
+    if alloc.get("by_exposure"):
+        lines.append(f"Fixed Income  : {_top(alloc['by_exposure'])}")
+    if alloc.get("by_region"):
+        lines.append(f"By Region     : {_top(alloc['by_region'])}")
+
+    context = "\n".join(lines)
+    prompt  = (
+        f"{context}\n\n"
+        "Analyze this portfolio allocation in English. Under 150 words.\n"
+        "Cover: 1) Concentration / diversification 2) Key risks from the allocation 3) Short actionable suggestion"
     )
 
-    print("[ai/recommender] Calling Gemini for rebalance advice...")
-    response = model.generate_content(prompt)
-    return response.text
+    print("[ai/recommender] Calling Groq for allocation insight...")
+    response = _groq().chat.completions.create(
+        model=AI_CFG["model"],
+        messages=[
+            {"role": "system", "content": SYSTEM_BASE},
+            {"role": "user",   "content": prompt},
+        ],
+        max_tokens=AI_CFG.get("max_tokens", 500),
+    )
+    return response.choices[0].message.content
+
+
+# ─── Optimizer Advice ─────────────────────────────────────────────────────────
+
+def get_optimizer_advice(optimizer_results: dict) -> str:
+    """
+    อธิบาย optimizer results และแนะนำ model + action
+    """
+    lines = ["=== Optimizer Results ==="]
+    for name, r in optimizer_results.items():
+        if "error" in r:
+            lines.append(f"[{name}] Error")
+            continue
+        top_w = sorted(r.get("weights", {}).items(), key=lambda x: -x[1])[:3]
+        top_str = ", ".join(f"{s}={w:.1f}%" for s, w in top_w)
+        lines.append(
+            f"[{name}] Ret={r.get('expected_return_pct', 0):+.1f}%"
+            f" Vol={r.get('expected_volatility_pct', 0):.1f}%"
+            f" Sharpe={r.get('sharpe_ratio', 0):.2f}"
+            f" | Top: {top_str}"
+        )
+
+    # top rebalance moves จาก best sharpe model
+    best = max(
+        ((n, r) for n, r in optimizer_results.items() if "error" not in r),
+        key=lambda x: x[1].get("sharpe_ratio", 0),
+        default=(None, {}),
+    )
+    if best[0]:
+        moves = sorted(
+            best[1].get("rebalance_plan", []),
+            key=lambda x: abs(x["diff_pct"]),
+            reverse=True,
+        )[:4]
+        if moves:
+            lines.append(f"\nTop moves ({best[0]}):")
+            for m in moves:
+                lines.append(f"  {m['symbol']} {m['action']} {m['diff_pct']:+.1f}%")
+
+    context = "\n".join(lines)
+    prompt  = (
+        f"{context}\n\n"
+        "Analyze these optimizer results in English. Under 180 words.\n"
+        "Cover: 1) Which model suits which investor style "
+        "2) Which model to pick and why 3) Top 3 rebalance actions to take first"
+    )
+
+    print("[ai/recommender] Calling Groq for optimizer advice...")
+    response = _groq().chat.completions.create(
+        model=AI_CFG["model"],
+        messages=[
+            {"role": "system", "content": SYSTEM_BASE},
+            {"role": "user",   "content": prompt},
+        ],
+        max_tokens=AI_CFG.get("max_tokens", 500),
+    )
+    return response.choices[0].message.content
 
 
 # ─── CLI test ────────────────────────────────────────────────────────────────

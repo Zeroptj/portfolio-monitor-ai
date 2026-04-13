@@ -147,57 +147,37 @@ def cmd_allocation(_args):
         t = h.asset_type or "other"
         by_type[t] = round(by_type.get(t, 0) + values[h.symbol] / total * 100, 2)
 
-    # by_sector (weighted ETF sector allocation)
-    by_sector: dict[str, float] = {}
+    # by_sector / by_exposure / by_region / by_etf
+    by_sector:   dict[str, float] = {}
+    by_exposure: dict[str, float] = {}
+    by_region:   dict[str, float] = {}
+    by_etf:      dict[str, list]  = {}
+
     db = SessionLocal()
     try:
         etf_symbols = [h.symbol for h in holdings if h.asset_type == "etf"]
         for sym in etf_symbols:
             etf_weight = values.get(sym, 0) / total
-            rows = db.query(ETFAllocation).filter(
-                ETFAllocation.etf  == sym,
-                ETFAllocation.type == "sector",
-            ).all()
-            for r in rows:
-                by_sector[r.name] = round(
-                    by_sector.get(r.name, 0) + r.weight * etf_weight, 2
-                )
-    finally:
-        db.close()
+            for alloc_type, target in [("sector", by_sector), ("exposure", by_exposure), ("region", by_region)]:
+                rows = db.query(ETFAllocation).filter(
+                    ETFAllocation.etf  == sym,
+                    ETFAllocation.type == alloc_type,
+                ).all()
+                for r in rows:
+                    target[r.name] = round(target.get(r.name, 0) + r.weight * etf_weight, 2)
 
-    # by_region
-    by_region: dict[str, float] = {}
-    db = SessionLocal()
-    try:
-        for sym in etf_symbols:
-            etf_weight = values.get(sym, 0) / total
-            rows = db.query(ETFAllocation).filter(
-                ETFAllocation.etf  == sym,
-                ETFAllocation.type == "region",
-            ).all()
-            for r in rows:
-                by_region[r.name] = round(
-                    by_region.get(r.name, 0) + r.weight * etf_weight, 2
-                )
-    finally:
-        db.close()
-
-    # by_etf (top holdings ของ ETF แต่ละตัว)
-    by_etf: dict[str, list] = {}
-    db = SessionLocal()
-    try:
-        for sym in etf_symbols:
-            rows = db.query(ETFHolding).filter(ETFHolding.etf == sym).all()
-            by_etf[sym] = [{"name": r.name, "weight": r.weight} for r in rows]
+            etf_rows = db.query(ETFHolding).filter(ETFHolding.etf == sym).all()
+            by_etf[sym] = [{"name": r.name, "weight": r.weight} for r in etf_rows]
     finally:
         db.close()
 
     _out({
-        "by_asset":  by_asset,
-        "by_type":   by_type,
-        "by_sector": by_sector,
-        "by_region": by_region,
-        "by_etf":    by_etf,
+        "by_asset":    by_asset,
+        "by_type":     by_type,
+        "by_sector":   by_sector,
+        "by_exposure": by_exposure,
+        "by_region":   by_region,
+        "by_etf":      by_etf,
     })
 
 
@@ -273,6 +253,57 @@ def cmd_recommend(args):
     from ai.recommender import get_recommendation
     question = getattr(args, "question", "") or ""
     _out({"answer": get_recommendation(question)})
+
+
+def cmd_ai_allocation(_args):
+    from portfolio.holdings import SessionLocal, Holding, ETFAllocation
+    from data.price_feed import get_prices
+    from ai.recommender import get_allocation_insight
+
+    db = SessionLocal()
+    try:
+        holdings = db.query(Holding).all()
+    finally:
+        db.close()
+
+    if not holdings:
+        _out({"insight": "ไม่มีข้อมูล holdings"})
+        return
+
+    symbols        = [h.symbol for h in holdings]
+    current_prices = get_prices(symbols)
+    values         = {h.symbol: h.quantity * current_prices.get(h.symbol, 0) for h in holdings}
+    total          = sum(values.values()) or 1
+
+    by_type: dict[str, float] = {}
+    for h in holdings:
+        t = h.asset_type or "other"
+        by_type[t] = round(by_type.get(t, 0) + values[h.symbol] / total * 100, 2)
+
+    by_sector: dict[str, float] = {}
+    by_exposure: dict[str, float] = {}
+    by_region: dict[str, float] = {}
+
+    db2 = SessionLocal()
+    try:
+        etf_syms = [h.symbol for h in holdings if h.asset_type == "etf"]
+        for sym in etf_syms:
+            etf_weight = values.get(sym, 0) / total
+            for at, target in [("sector", by_sector), ("exposure", by_exposure), ("region", by_region)]:
+                for r in db2.query(ETFAllocation).filter(ETFAllocation.etf == sym, ETFAllocation.type == at).all():
+                    target[r.name] = round(target.get(r.name, 0) + r.weight * etf_weight, 2)
+    finally:
+        db2.close()
+
+    alloc = {"by_type": by_type, "by_sector": by_sector, "by_exposure": by_exposure, "by_region": by_region}
+    _out({"insight": get_allocation_insight(alloc)})
+
+
+def cmd_ai_optimizer(_args):
+    from portfolio.optimizer import run_all_models
+    from ai.recommender import get_optimizer_advice
+    results = run_all_models()
+    _out({"advice": get_optimizer_advice(results), "results": results})
 
 
 def cmd_news(args):
@@ -420,8 +451,10 @@ COMMANDS = {
     "summary":     cmd_summary,
     "optimizer":   cmd_optimizer,
     "rebalance":   cmd_rebalance,
-    "ai-summary":  cmd_ai_summary,
-    "recommend":   cmd_recommend,
+    "ai-summary":       cmd_ai_summary,
+    "recommend":        cmd_recommend,
+    "ai-allocation":    cmd_ai_allocation,
+    "ai-optimizer":     cmd_ai_optimizer,
     "news":        cmd_news,
     "refresh":     cmd_refresh,
     "morningstar": cmd_morningstar,

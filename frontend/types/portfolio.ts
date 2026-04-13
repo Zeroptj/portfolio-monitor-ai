@@ -47,11 +47,12 @@ export interface BenchmarkMetrics {
 }
 
 export interface Allocation {
-  by_asset:  Record<string, number>
-  by_type:   Record<string, number>
-  by_sector: Record<string, number>
-  by_region: Record<string, number>
-  by_etf:    Record<string, { name: string; weight: number }[]>
+  by_asset:    Record<string, number>
+  by_type:     Record<string, number>
+  by_sector:   Record<string, number>
+  by_exposure: Record<string, number>
+  by_region:   Record<string, number>
+  by_etf:      Record<string, { name: string; weight: number }[]>
 }
 
 export interface OptimizerResult {

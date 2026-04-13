@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { runOptimizer, getRebalanceCheck } from "@/lib/api"
+import { runOptimizer, getRebalanceCheck, getAIOptimizerAdvice } from "@/lib/api"
+import { useAIEnabled } from "@/lib/ai-context"
 import { OptimizerResult, RebalanceCheck } from "@/types/portfolio"
 import RebalanceTable from "@/components/portfolio/RebalanceTable"
 
@@ -52,11 +53,14 @@ const MODEL_LABEL: Record<string, string> = {
 }
 
 export default function OptimizerPage() {
+  const aiEnabled  = useAIEnabled()
   const [results,      setResults    ] = useState<Record<string, OptimizerResult> | null>(null)
   const [rebal,        setRebal      ] = useState<RebalanceCheck | null>(null)
   const [running,      setRunning    ] = useState(false)
   const [loading,      setLoading    ] = useState(true)
   const [activeModel,  setActiveModel] = useState<string>("max_sharpe")
+  const [aiAdvice,     setAiAdvice   ] = useState<string>("")
+  const [aiLoading,    setAiLoading  ] = useState(false)
 
   useEffect(() => {
     getRebalanceCheck()
@@ -67,15 +71,24 @@ export default function OptimizerPage() {
 
   const handleRun = async () => {
     setRunning(true)
+    setAiAdvice("")
     try {
       const r = await runOptimizer("all")
       setResults(r)
-      // auto-select best sharpe model
       const best = Object.entries(r).reduce(
         (prev, [m, v]) => (!v.error && (v.sharpe_ratio ?? 0) > (prev[1].sharpe_ratio ?? 0) ? [m, v] : prev),
         Object.entries(r)[0]
       )
       if (best) setActiveModel(best[0])
+      // AI advice หลัง run เสร็จ (เฉพาะตอน AI enabled)
+      if (aiEnabled) {
+        setAiLoading(true)
+        try {
+          const ai = await getAIOptimizerAdvice()
+          setAiAdvice(ai.advice)
+        } catch { setAiAdvice("Error — could not get AI advice.") }
+        finally { setAiLoading(false) }
+      }
     } catch (e) {
       console.error(e)
     } finally {
@@ -93,7 +106,7 @@ export default function OptimizerPage() {
           style={{
             background: running ? "transparent" : "#fff",
             color:      running ? "#6B7280" : "#000",
-            border:     "1px solid #333",
+            border:     running ? "1px solid #333" : "1px solid #fff",
             padding:    "7px 20px",
             fontSize:   10,
             fontWeight: 700,
@@ -119,9 +132,9 @@ export default function OptimizerPage() {
                   fontSize: 11,
                   fontWeight: 700,
                   letterSpacing: "1px",
-                  color: rebal.needs_rebalance ? "#fff" : "#6B7280",
+                  color:   rebal.needs_rebalance ? "#F59E0B" : "#22C55E",
                   padding: "3px 10px",
-                  border: "1px solid #333",
+                  border:  `1px solid ${rebal.needs_rebalance ? "#F59E0B" : "#22C55E"}`,
                 }}>
                   {rebal.needs_rebalance ? "REBALANCE NEEDED" : "BALANCED"}
                 </div>
@@ -173,6 +186,22 @@ export default function OptimizerPage() {
         </>
       )}
 
+      {/* AI Advice */}
+      {aiEnabled && (aiLoading || aiAdvice) && (
+        <>
+          <div style={SECTION_LABEL}>✦ AI Optimizer Advice</div>
+          <div style={{ background: "#111", border: "1px solid #222", padding: "16px 20px" }}>
+            {aiLoading ? (
+              <div style={{ color: "#333", fontSize: 11, letterSpacing: "2px" }}>ANALYZING...</div>
+            ) : (
+              <div style={{ color: "#B3B3B3", fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                {aiAdvice}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       {/* Optimizer Results */}
       {results && (
         <>
@@ -218,9 +247,10 @@ export default function OptimizerPage() {
                       <td style={{ padding: "10px 8px 10px 0", textAlign: "right" }}>
                         <span style={{
                           fontSize: 9, padding: "2px 8px",
-                          border: `1px solid ${isActive ? "#444" : "#222"}`,
-                          color: isActive ? "#fff" : "#333",
+                          border: `1px solid ${isActive ? "#3B82F6" : "#222"}`,
+                          color:  isActive ? "#3B82F6" : "#444",
                           letterSpacing: "0.5px",
+                          cursor: "pointer",
                         }}>
                           VIEW
                         </span>
@@ -251,7 +281,7 @@ export default function OptimizerPage() {
                         {Object.entries(r.weights)
                           .sort(([, a], [, b]) => b - a)
                           .map(([sym, w]) => {
-                            const pct = w * 100
+                            const pct = w
                             return (
                               <div key={sym}>
                                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>

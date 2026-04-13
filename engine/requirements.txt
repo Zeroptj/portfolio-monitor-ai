@@ -3,30 +3,41 @@ fastapi==0.115.12
 uvicorn==0.34.0
 
 # Database
-sqlalchemy==2.0.40
+SQLAlchemy==2.0.40
 
 # Data / HTTP
 requests==2.32.3
-yfinance==0.2.54
+yfinance==1.2.1
 pandas==2.2.3
 numpy==2.2.5
+python-dateutil==2.9.0.post0
 
 # Portfolio optimization
 scipy==1.15.2
 scikit-learn==1.6.1
+pyportfolioopt==1.6.0
+riskfolio-lib==7.2.1
+cvxpy==1.8.2
 
-# AI
-google-generativeai==0.8.5
+# AI (optional — required only if GROQ_API_KEY is set)
+groq==1.1.2
 
 # Scheduler
-apscheduler==3.11.0
+APScheduler==3.11.0
 
 # Config / Env
 python-dotenv==1.1.0
-pyyaml==6.0.2
+PyYAML==6.0.2
 
 # News
 newsapi-python==0.2.7
 
 # ETF scraping
 playwright==1.51.0
+beautifulsoup4==4.14.3
+
+# Crypto prices
+pycoingecko==3.2.0
+
+# FX rates
+httpx==0.28.1

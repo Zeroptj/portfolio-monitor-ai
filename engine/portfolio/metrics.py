@@ -88,10 +88,14 @@ def _calc_metrics(
     years        = days / 365
     annualized   = ((1 + total_return / 100) ** (1 / years) - 1) * 100
 
-    # ── Sharpe ───────────────────────────────────────────────────────────────
+    # ── Sharpe / Volatility (weekdays only — avoids ffill bias from crypto/stock mix) ──
+    trading_returns = daily_returns[daily_returns.index.dayofweek < 5]
+    if trading_returns.empty:
+        trading_returns = daily_returns  # fallback (crypto-only portfolio)
+
     rf_daily  = (1 + risk_free_rate) ** (1 / 252) - 1
-    std_daily = daily_returns.std()
-    sharpe    = float((daily_returns - rf_daily).mean() / std_daily * np.sqrt(252)) if std_daily > 0 else 0.0
+    std_daily = trading_returns.std()
+    sharpe    = float((trading_returns - rf_daily).mean() / std_daily * np.sqrt(252)) if std_daily > 0 else 0.0
 
     # ── Volatility ───────────────────────────────────────────────────────────
     volatility = float(std_daily * np.sqrt(252) * 100)
@@ -158,10 +162,10 @@ def _benchmark_metrics(
 
     return {
         "benchmark":            benchmark,
-        "alpha_pct":            round(alpha, 2),
+        "alpha_pct":            round(float(alpha), 2),
         "beta":                 round(beta, 3),
         "correlation":          round(float(aligned["portfolio"].corr(aligned["benchmark"])), 3),
-        "benchmark_return_pct": round(bench_total, 2),
+        "benchmark_return_pct": round(float(bench_total), 2),
     }
 
 
@@ -199,7 +203,9 @@ def get_portfolio_metrics(days: int = 365) -> dict:
     if not metrics:
         return {}
 
-    metrics["benchmark"] = _benchmark_metrics(value_series.pct_change().dropna())
+    bm = _benchmark_metrics(value_series.pct_change().dropna())
+    if bm:
+        metrics["benchmark"] = bm
     return metrics
 
 
@@ -238,7 +244,9 @@ def get_asset_metrics(symbol: str, days: int = 365) -> dict:
     if not metrics:
         return {}
 
-    metrics["benchmark"] = _benchmark_metrics(price_series.pct_change().dropna())
+    bm = _benchmark_metrics(price_series.pct_change().dropna())
+    if bm:
+        metrics["benchmark"] = bm
     return metrics
 
 

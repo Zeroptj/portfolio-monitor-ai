@@ -80,7 +80,7 @@ refresh:
 # Optimizer
 # ================================
 optimizer:
-  lookback_days: 365
+  lookback_days: 1100
   risk_free_rate: 0.03
   rebalance_threshold: 0.10
   rebalance_check_days: 90
@@ -95,15 +95,15 @@ optimizer:
 # AI
 # ================================
 ai:
-  model: gemini-3-flash-preview
+  model: llama-3.1-8b-instant
   max_tokens: 500
-  language: "th"
+  language: "en"
   summary_prompt: |
-    วิเคราะห์พอร์ตการลงทุนนี้เป็นภาษาไทย กระชับ ไม่เกิน 200 คำ
-    สรุป 3 หัวข้อเท่านั้น:
-    1. ผลการดำเนินงาน (return, sharpe, drawdown)
-    2. ความเสี่ยงที่น่ากังวล
-    3. สิ่งที่ควรระวังวันนี้
+    Analyze this investment portfolio in English. Be concise, under 200 words.
+    Cover exactly 3 topics:
+    1. Performance (return, sharpe, drawdown)
+    2. Key risks to watch
+    3. Actionable insight for today
 
 # ================================
 # News

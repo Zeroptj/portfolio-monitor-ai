@@ -226,6 +226,24 @@ def _save_allocation(etf: str, alloc_type: str, rows: list[dict]):
         db.close()
 
 
+# ─── Allocation Type Detection ───────────────────────────────────────────────
+
+_BOND_SECTOR_NAMES = {
+    "government", "municipal", "corporate", "securitized",
+    "cash & equivalents", "derivative",
+}
+
+def _resolve_alloc_type(sectors: list[dict]) -> str:
+    """
+    ตรวจว่า sector data ที่ scrape มาเป็น equity sectors หรือ fixed income categories
+    Morningstar ใช้ตารางเดียวกันสำหรับ bond ETF → ชื่อจะเป็น Government/Corporate ฯลฯ
+    """
+    names = {s["name"].lower() for s in sectors}
+    if names & _BOND_SECTOR_NAMES:
+        return "exposure"
+    return "sector"
+
+
 # ─── Per-ETF Scraper ─────────────────────────────────────────────────────────
 
 def scrape_etf(ticker: str, exchange: str, max_retries: int = 3) -> bool:
@@ -263,7 +281,8 @@ def scrape_etf(ticker: str, exchange: str, max_retries: int = 3) -> bool:
             if holdings:
                 _save_holdings(ticker, holdings)
             if sectors:
-                _save_allocation(ticker, "sector", sectors)
+                alloc_type = _resolve_alloc_type(sectors)
+                _save_allocation(ticker, alloc_type, sectors)
             if regions:
                 _save_allocation(ticker, "region", regions)
 

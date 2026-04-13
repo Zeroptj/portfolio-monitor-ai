@@ -60,11 +60,20 @@ export const getRebalanceCheck = (): Promise<RebalanceCheck> =>
   api.get("/optimizer/rebalance").then(r => r.data)
 
 // ── AI ───────────────────────────────────────────────────
+export const getAIStatus = (): Promise<{ enabled: boolean }> =>
+  api.get("/ai/status").then(r => r.data)
+
 export const getAISummary = (refresh = false): Promise<AISummary> =>
   api.get(`/ai/summary${refresh ? "?refresh=true" : ""}`).then(r => r.data)
 
 export const getRecommendation = (question: string): Promise<{ answer: string }> =>
   api.post("/ai/recommend", { question }).then(r => r.data)
+
+export const getAIAllocationInsight = (): Promise<{ insight: string }> =>
+  api.get("/ai/allocation").then(r => r.data)
+
+export const getAIOptimizerAdvice = (): Promise<{ advice: string; results: Record<string, unknown> }> =>
+  api.post("/ai/optimizer-advice").then(r => r.data)
 
 // ── News ─────────────────────────────────────────────────
 export const getNews = (symbol?: string): Promise<NewsArticle[]> =>

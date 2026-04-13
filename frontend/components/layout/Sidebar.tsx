@@ -47,7 +47,7 @@ export default function Sidebar() {
               marginBottom: 1,
               color: active ? "#fff" : "#6B7280",
               background: active ? "#111" : "transparent",
-              borderLeft: active ? "2px solid #fff" : "2px solid transparent",
+              borderLeft: active ? "2px solid #3B82F6" : "2px solid transparent",
               textDecoration: "none",
               fontSize: 12,
               fontWeight: active ? 600 : 400,

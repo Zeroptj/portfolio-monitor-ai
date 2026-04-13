@@ -45,12 +45,10 @@ export default function RebalanceTable({ plans }: Props) {
                 </td>
                 <td style={{ padding: "10px 8px 10px 0" }}>
                   <span style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: "1px",
+                    fontSize: 9, fontWeight: 700, letterSpacing: "1px",
                     padding: "3px 8px",
-                    border: "1px solid #333",
-                    color: isBuy ? "#fff" : isSell ? "#888" : "#555",
+                    border: `1px solid ${isBuy ? "#22C55E" : isSell ? "#EF4444" : "#444"}`,
+                    color:  isBuy ? "#22C55E" : isSell ? "#EF4444" : "#6B7280",
                   }}>
                     {p.action}
                   </span>
@@ -62,9 +60,8 @@ export default function RebalanceTable({ plans }: Props) {
                   {p.target_pct?.toFixed(1)}%
                 </td>
                 <td style={{
-                  padding: "10px 0",
-                  fontFamily: "monospace",
-                  color: (p.diff_pct ?? 0) >= 0 ? "#fff" : "#6B7280",
+                  padding: "10px 0", fontFamily: "monospace",
+                  color: (p.diff_pct ?? 0) > 0 ? "#22C55E" : (p.diff_pct ?? 0) < 0 ? "#EF4444" : "#6B7280",
                 }}>
                   {(p.diff_pct ?? 0) >= 0 ? "+" : ""}{p.diff_pct?.toFixed(2)}%
                 </td>

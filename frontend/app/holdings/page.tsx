@@ -5,6 +5,27 @@ import { getHoldings, getPortfolioSummary, refreshPrices } from "@/lib/api"
 import { Holding, PortfolioSummary } from "@/types/portfolio"
 import HoldingsTable from "@/components/portfolio/HoldingsTable"
 
+const TYPE_COLOR: Record<string, string> = {
+  stock:     "#3B82F6",
+  etf:       "#06B6D4",
+  crypto:    "#F59E0B",
+  commodity: "#EAB308",
+  other:     "#6B7280",
+}
+
+function TypeBadge({ type }: { type: string }) {
+  const color = TYPE_COLOR[type] ?? TYPE_COLOR.other
+  return (
+    <span style={{
+      fontSize: 9, padding: "2px 7px",
+      border: `1px solid ${color}`,
+      color, letterSpacing: "0.5px",
+    }}>
+      {type}
+    </span>
+  )
+}
+
 const PAGE_TITLE: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 700,
@@ -127,9 +148,7 @@ export default function HoldingsPage() {
                         {h.symbol}
                       </td>
                       <td style={{ padding: "10px 12px 10px 0" }}>
-                        <span style={{ fontSize: 9, padding: "2px 7px", border: "1px solid #333", color: "#6B7280", letterSpacing: "0.5px" }}>
-                          {h.asset_type}
-                        </span>
+                        <TypeBadge type={h.asset_type} />
                       </td>
                       <td style={{ padding: "10px 12px 10px 0", fontFamily: "monospace", color: "#B3B3B3" }}>
                         {h.quantity}
@@ -143,10 +162,10 @@ export default function HoldingsPage() {
                       <td style={{ padding: "10px 12px 10px 0", fontFamily: "monospace", color: "#fff" }}>
                         ${(h.value ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                       </td>
-                      <td style={{ padding: "10px 12px 10px 0", fontFamily: "monospace", color: pos ? "#fff" : "#6B7280" }}>
+                      <td style={{ padding: "10px 12px 10px 0", fontFamily: "monospace", color: pos ? "#22C55E" : "#EF4444" }}>
                         {pos ? "+" : ""}${Math.abs(pnl).toFixed(0)}
                       </td>
-                      <td style={{ padding: "10px 12px 10px 0", fontFamily: "monospace", color: pos ? "#fff" : "#6B7280" }}>
+                      <td style={{ padding: "10px 12px 10px 0", fontFamily: "monospace", color: pos ? "#22C55E" : "#EF4444" }}>
                         {pos ? "+" : ""}{pnlPct.toFixed(2)}%
                       </td>
                       <td style={{ padding: "10px 0", fontFamily: "monospace", color: "#6B7280" }}>

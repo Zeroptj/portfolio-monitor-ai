@@ -7,11 +7,11 @@ type Props = {
 
 export default function MetricCard({ title, value, sub, positive }: Props) {
   const valueColor =
-    positive === true  ? "#fff" :
-    positive === false ? "#6B7280" :
+    positive === true  ? "#22C55E" :
+    positive === false ? "#EF4444" :
     "#fff"
 
-  const fontWeight = positive === true ? 700 : positive === false ? 400 : 600
+  const fontWeight = positive === true ? 700 : positive === false ? 600 : 600
 
   return (
     <div style={{

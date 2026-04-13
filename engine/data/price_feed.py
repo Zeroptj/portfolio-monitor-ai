@@ -75,34 +75,47 @@ def _is_rate_limited(e: Exception) -> bool:
     return "rate limit" in s or "too many requests" in s or "429" in s
 
 
-def fetch_yfinance_prices(symbols: list[str]) -> dict[str, float]:
-    """ดึงราคาปัจจุบันด้วย Ticker.fast_info"""
+def fetch_yfinance_prices(symbols: list[str], batch_size: int = 10) -> dict[str, float]:
+    """ดึงราคาปัจจุบันด้วย yf.download (batch) — เอา Close ล่าสุด"""
     if not symbols:
         return {}
     unique = list(dict.fromkeys(symbols))
     prices: dict[str, float] = {}
-    for symbol in unique:
+
+    for i in range(0, len(unique), batch_size):
+        batch = unique[i: i + batch_size]
+        print(f"[price_feed] Downloading prices: {batch}")
         for attempt in range(2):
             try:
-                info  = yf.Ticker(symbol).fast_info
-                price = float(info.get("lastPrice") or info.get("regularMarketPrice") or 0)
-                if price > 0:
-                    prices[symbol] = price
+                data  = yf.download(batch, period="2d", auto_adjust=True, progress=False)
+                close = data["Close"]
+                if len(batch) == 1:
+                    series = close.squeeze().dropna()
+                    if not series.empty:
+                        prices[batch[0]] = float(series.iloc[-1])
+                else:
+                    for symbol in batch:
+                        if symbol in close.columns:
+                            series = close[symbol].dropna()
+                            if not series.empty:
+                                prices[symbol] = float(series.iloc[-1])
                 break
             except Exception as e:
                 if _is_rate_limited(e):
-                    print(f"[price_feed] Rate limited on {symbol}, skipping retry")
-                    break   # ไม่ retry เมื่อโดน rate limit
-                print(f"[price_feed] price error {symbol} (attempt {attempt+1}): {e}")
+                    print(f"[price_feed] Rate limited on {batch}, skipping retry")
+                    break
+                print(f"[price_feed] price error {batch} (attempt {attempt+1}): {e}")
                 if attempt == 0:
                     time.sleep(1)
+        if i + batch_size < len(unique):
+            time.sleep(0.5)
     return prices
 
 
 def fetch_fx_rate() -> float:
     try:
         data = yf.download("THB=X", period="2d", auto_adjust=True, progress=False)
-        series = data["Close"].dropna()
+        series = data["Close"].squeeze().dropna()
         if not series.empty:
             return float(series.iloc[-1])
     except Exception as e:
@@ -149,7 +162,7 @@ def fetch_yfinance_history(
                 data  = yf.download(batch, start=start, auto_adjust=True, progress=False)
                 close = data["Close"]
                 if len(batch) == 1:
-                    series = close.dropna()
+                    series = close.squeeze().dropna()
                     history[batch[0]] = {str(idx.date()): float(val) for idx, val in series.items()}
                 else:
                     for symbol in batch:
@@ -359,34 +372,20 @@ def get_price_histories_batch(symbols: list[str], days: int = 365) -> dict[str, 
     return {sym: hist for sym, hist in by_symbol.items() if hist}
 
 
-# ─── Full Refresh Jobs (ใช้จาก scheduler เท่านั้น) ──────────────────────────
-
-def refresh_prices() -> dict[str, float]:
-    """Fetch + save ราคาปัจจุบันทุก asset (scheduler job)"""
-    symbols = get_all_symbols()
-    all_syms = (symbols["crypto"] + symbols["stocks"] +
-                symbols["etf"]    + symbols["commodities"])
-    return get_prices(all_syms)
-
-
-def refresh_price_history(days: int = 365) -> dict[str, dict[str, float]]:
-    """Fetch + save ราคาย้อนหลังทุก asset (scheduler job)"""
-    symbols = get_all_symbols()
-    all_syms = (symbols["crypto"] + symbols["stocks"] +
-                symbols["etf"]    + symbols["commodities"])
-    return get_price_histories_batch(all_syms, days=days)
-
-
 # ─── CLI test ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     init_db()
     print("\n=== Current Prices ===")
-    prices = refresh_prices()
+    prices = get_prices()
     for symbol, price in sorted(prices.items()):
         print(f"  {symbol:10s} ${price:>12,.2f}")
     fx = fetch_fx_rate()
     print(f"\n  USD/THB: {fx:.2f}")
-    print("\n=== Price History (30d sample) ===")
-    refresh_price_history(days=30)
+    print("\n=== Price History ===")
+    get_price_histories_batch(
+        get_all_symbols()["crypto"] + get_all_symbols()["stocks"] +
+        get_all_symbols()["etf"]    + get_all_symbols()["commodities"],
+        days=1100,
+    )
     print("\nDone.")

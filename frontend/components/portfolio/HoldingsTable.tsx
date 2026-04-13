@@ -11,6 +11,27 @@ interface Props {
 
 const ASSET_TYPES = ["stock", "etf", "crypto", "commodity", "other"]
 
+const TYPE_COLOR: Record<string, string> = {
+  stock:     "#3B82F6",
+  etf:       "#06B6D4",
+  crypto:    "#F59E0B",
+  commodity: "#EAB308",
+  other:     "#6B7280",
+}
+
+function TypeBadge({ type }: { type: string }) {
+  const color = TYPE_COLOR[type] ?? TYPE_COLOR.other
+  return (
+    <span style={{
+      fontSize: 9, padding: "2px 7px",
+      border: `1px solid ${color}`,
+      color, letterSpacing: "0.5px",
+    }}>
+      {type}
+    </span>
+  )
+}
+
 const TH: React.CSSProperties = {
   paddingBottom: 10,
   textAlign: "left",
@@ -92,9 +113,9 @@ export default function HoldingsTable({ holdings, onRefresh }: Props) {
         <button
           onClick={() => setShowForm(p => !p)}
           style={{
-            background: showForm ? "transparent" : "#fff",
+            background: showForm ? "transparent" : "#22C55E",
             color: showForm ? "#6B7280" : "#000",
-            border: "1px solid #333",
+            border: showForm ? "1px solid #333" : "1px solid #22C55E",
             padding: "5px 14px",
             fontSize: 10,
             fontWeight: 700,
@@ -152,15 +173,14 @@ export default function HoldingsTable({ holdings, onRefresh }: Props) {
               disabled={loading}
               style={{
                 gridColumn: "1 / -1",
-                background: "#fff",
-                color: "#000",
-                border: "none",
+                background: loading ? "transparent" : "#22C55E",
+                color: loading ? "#6B7280" : "#000",
+                border: "1px solid #22C55E",
                 padding: "9px",
                 fontSize: 11,
                 fontWeight: 700,
                 letterSpacing: "1px",
                 cursor: loading ? "wait" : "pointer",
-                opacity: loading ? 0.6 : 1,
               }}
             >
               {loading ? "ADDING..." : "ADD HOLDING"}
@@ -186,23 +206,12 @@ export default function HoldingsTable({ holdings, onRefresh }: Props) {
                 </td>
                 <td style={{ padding: "10px 8px 10px 0", color: "#B3B3B3" }}>{h.name}</td>
                 <td style={{ padding: "10px 8px 10px 0" }}>
-                  <span style={{
-                    fontSize: 9,
-                    padding: "2px 7px",
-                    border: "1px solid #333",
-                    color: "#6B7280",
-                    letterSpacing: "0.5px",
-                  }}>
-                    {h.asset_type}
-                  </span>
+                  <TypeBadge type={h.asset_type} />
                   {h.asset_type === "etf" && h.exchange && (
                     <span style={{
-                      fontSize: 9,
-                      padding: "2px 7px",
+                      fontSize: 9, padding: "2px 7px",
                       border: "1px solid #1e1e1e",
-                      color: "#444",
-                      letterSpacing: "0.5px",
-                      marginLeft: 4,
+                      color: "#444", letterSpacing: "0.5px", marginLeft: 4,
                     }}>
                       {h.exchange}
                     </span>
@@ -220,9 +229,9 @@ export default function HoldingsTable({ holdings, onRefresh }: Props) {
                     style={{
                       fontSize: 9,
                       padding: "3px 10px",
-                      border: "1px solid #333",
+                      border: "1px solid #EF4444",
                       background: "transparent",
-                      color: "#6B7280",
+                      color: "#EF4444",
                       cursor: "pointer",
                       letterSpacing: "0.5px",
                     }}

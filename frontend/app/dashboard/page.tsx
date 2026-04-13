@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { getAISummary, getPortfolioMetrics, getPortfolioSummary } from "@/lib/api"
+import { useAIEnabled } from "@/lib/ai-context"
 import { PortfolioSummary, Metrics } from "@/types/portfolio"
 import MetricCard from "@/components/portfolio/MetricCard"
 import AIBox from "@/components/portfolio/AIBox"
@@ -32,6 +33,7 @@ const PANEL: React.CSSProperties = {
 }
 
 export default function DashboardPage() {
+  const aiEnabled  = useAIEnabled()
   const [summary,    setSummary   ] = useState<PortfolioSummary | null>(null)
   const [metrics,    setMetrics   ] = useState<Metrics | null>(null)
   const [aiSummary,  setAiSummary ] = useState<string>("")
@@ -39,19 +41,18 @@ export default function DashboardPage() {
   const [aiRefresh,  setAiRefresh ] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      getPortfolioSummary(),
-      getPortfolioMetrics(),
-      getAISummary(),
-    ])
+    const fetches: Promise<unknown>[] = [getPortfolioSummary(), getPortfolioMetrics()]
+    if (aiEnabled) fetches.push(getAISummary())
+
+    Promise.all(fetches)
       .then(([s, m, ai]) => {
-        setSummary(s)
-        setMetrics(m)
-        setAiSummary(ai.summary)
+        setSummary(s as PortfolioSummary)
+        setMetrics(m as Metrics)
+        if (ai) setAiSummary((ai as { summary: string }).summary)
       })
       .catch(err => console.error("Dashboard fetch error:", err))
       .finally(() => setLoading(false))
-  }, [])
+  }, [aiEnabled])
 
   if (loading) {
     return (
@@ -122,7 +123,7 @@ export default function DashboardPage() {
       )}
 
       {/* ── Benchmark ── */}
-      {metrics?.benchmark && (
+      {metrics?.benchmark?.benchmark && (
         <>
           <div style={SECTION_LABEL}>vs {metrics.benchmark.benchmark}</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1 }}>
@@ -207,20 +208,22 @@ export default function DashboardPage() {
       )}
 
       {/* ── AI Box ── */}
-      <div style={{ marginTop: 28 }}>
-        <AIBox
-          summary={aiSummary}
-          refreshing={aiRefresh}
-          onRefresh={async () => {
-            setAiRefresh(true)
-            try {
-              const ai = await getAISummary(true)
-              setAiSummary(ai.summary)
-            } catch { /* ignore */ }
-            finally { setAiRefresh(false) }
-          }}
-        />
-      </div>
+      {aiEnabled && (
+        <div style={{ marginTop: 28 }}>
+          <AIBox
+            summary={aiSummary}
+            refreshing={aiRefresh}
+            onRefresh={async () => {
+              setAiRefresh(true)
+              try {
+                const ai = await getAISummary(true)
+                setAiSummary(ai.summary)
+              } catch { /* ignore */ }
+              finally { setAiRefresh(false) }
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

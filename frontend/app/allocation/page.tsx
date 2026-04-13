@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getAllocation } from "@/lib/api"
+import { getAllocation, getAIAllocationInsight } from "@/lib/api"
+import { useAIEnabled } from "@/lib/ai-context"
 import { Allocation } from "@/types/portfolio"
 import AllocationPie from "@/components/charts/AllocationPie"
 import BarComparison, { BarItem } from "@/components/charts/BarComparison"
@@ -32,8 +33,11 @@ const PANEL: React.CSSProperties = {
 }
 
 export default function AllocationPage() {
-  const [alloc,   setAlloc  ] = useState<Allocation | null>(null)
-  const [loading, setLoading] = useState(true)
+  const aiEnabled  = useAIEnabled()
+  const [alloc,      setAlloc     ] = useState<Allocation | null>(null)
+  const [loading,    setLoading   ] = useState(true)
+  const [aiInsight,  setAiInsight ] = useState<string>("")
+  const [aiLoading,  setAiLoading ] = useState(false)
 
   useEffect(() => {
     getAllocation()
@@ -69,9 +73,53 @@ export default function AllocationPage() {
     .sort(([, a], [, b]) => b - a)
     .map(([name, value]) => ({ name, value }))
 
+  const exposureBars: BarItem[] = Object.entries(alloc.by_exposure ?? {})
+    .sort(([, a], [, b]) => b - a)
+    .map(([name, value]) => ({ name, value }))
+
+  const regionBars: BarItem[] = Object.entries(alloc.by_region ?? {})
+    .sort(([, a], [, b]) => b - a)
+    .map(([name, value]) => ({ name, value }))
+
   return (
     <div>
-      <div style={PAGE_TITLE}>Allocation</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
+        <div style={PAGE_TITLE}>Allocation</div>
+        {aiEnabled && (
+          <button
+            onClick={async () => {
+              setAiLoading(true)
+              try { setAiInsight((await getAIAllocationInsight()).insight) }
+              catch { setAiInsight("Error — could not get AI insight.") }
+              finally { setAiLoading(false) }
+            }}
+            disabled={aiLoading}
+            style={{
+              background: aiLoading ? "transparent" : "#fff",
+              color:      aiLoading ? "#6B7280" : "#000",
+              border:     "1px solid #333",
+              padding:    "7px 20px",
+              fontSize:   10,
+              fontWeight: 700,
+              letterSpacing: "1px",
+              cursor:     aiLoading ? "wait" : "pointer",
+            }}
+          >
+            {aiLoading ? "ANALYZING..." : "✦ ANALYZE"}
+          </button>
+        )}
+      </div>
+
+      {aiInsight && (
+        <div style={{ background: "#111", border: "1px solid #222", padding: "16px 20px", marginBottom: 1 }}>
+          <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "1.5px", textTransform: "uppercase", color: "#6B7280", marginBottom: 10 }}>
+            ✦ AI Allocation Insight
+          </div>
+          <div style={{ color: "#B3B3B3", fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+            {aiInsight}
+          </div>
+        </div>
+      )}
 
       {/* By Type + By Asset */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
@@ -99,6 +147,26 @@ export default function AllocationPage() {
           <div style={SECTION_LABEL}>Weight by Sector</div>
           <div style={PANEL}>
             <BarComparison data={sectorBars} label="Weight" suffix="%" />
+          </div>
+        </>
+      )}
+
+      {/* Exposure (bond ETFs) */}
+      {exposureBars.length > 0 && (
+        <>
+          <div style={SECTION_LABEL}>Fixed Income Exposure</div>
+          <div style={PANEL}>
+            <BarComparison data={exposureBars} label="Weight" suffix="%" />
+          </div>
+        </>
+      )}
+
+      {/* Region */}
+      {regionBars.length > 0 && (
+        <>
+          <div style={SECTION_LABEL}>Weight by Region</div>
+          <div style={PANEL}>
+            <BarComparison data={regionBars} label="Weight" suffix="%" />
           </div>
         </>
       )}
