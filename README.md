@@ -23,8 +23,8 @@ Personal portfolio monitoring tool with optional AI analysis. Bloomberg-style da
 portfolio-monitor-ai/
 ├── .env                     # API keys (not committed)
 ├── .env.example             # Template
-├── config.yaml              # Assets, benchmark, refresh intervals, AI config
 ├── engine/
+│   ├── config.yaml          # Assets, benchmark, refresh intervals, AI config
 │   ├── requirements.txt
 │   ├── main.py              # FastAPI server
 │   ├── scheduler.py         # Background jobs (prices, news, AI summary, ETF)
@@ -262,7 +262,7 @@ Or click **↺ REFRESH DATA** on the Holdings page.
 
 ## Configuration
 
-Key settings in `config.yaml`:
+Key settings in `engine/config.yaml`:
 
 ```yaml
 portfolio:
@@ -307,6 +307,49 @@ ai:
 | **Min Volatility** | Minimize portfolio variance |
 | **Risk Parity** | Equal risk contribution per asset |
 | **Equal Weight** | Simple 1/N allocation baseline |
+
+---
+
+## Deployment
+
+### Backend → Fly.io
+
+```bash
+cd engine
+
+# Install flyctl (Windows)
+powershell -ExecutionPolicy Bypass -c "irm https://fly.io/install.ps1 | iex"
+
+# Login
+flyctl auth login
+
+# First deploy
+flyctl launch
+
+# Set secrets
+flyctl secrets set NEWS_API_KEY="..." AI_ENABLED="false"
+# Add GROQ_API_KEY only if you want AI enabled on the server
+
+# Deploy
+flyctl deploy
+```
+
+> Uses a persistent volume for SQLite at `/data/portfolio.db`. Region: `sin` (Singapore). Cold start ~5-10s due to auto-stop on idle.
+
+### Frontend → Vercel
+
+```bash
+cd frontend
+npm i -g vercel
+vercel
+
+# Set env vars
+vercel env add NEWS_API_KEY         # production + preview only (sensitive)
+vercel env add NEXT_PUBLIC_API_URL  # https://portfolio-monitor-ai.fly.dev
+
+# Redeploy to apply env vars
+vercel --prod
+```
 
 ---
 

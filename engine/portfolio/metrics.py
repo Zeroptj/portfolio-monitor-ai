@@ -20,7 +20,7 @@ sys.path.insert(0, ENGINE_DIR)
 from portfolio.holdings import SessionLocal, Holding
 from data.price_feed import get_price_history, get_price_histories_batch
 
-with open(os.path.join(ROOT_DIR, "config.yaml"), "r", encoding="utf-8") as f:
+with open(os.path.join(ENGINE_DIR, "config.yaml"), "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
 RISK_FREE_RATE = config["optimizer"]["risk_free_rate"]  # annual, e.g. 0.03

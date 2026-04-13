@@ -306,6 +306,15 @@ def cmd_ai_optimizer(_args):
     _out({"advice": get_optimizer_advice(results), "results": results})
 
 
+def cmd_ai_status(_args):
+    from dotenv import load_dotenv
+    root = os.path.dirname(ENGINE_DIR)
+    load_dotenv(os.path.join(root, ".env"))
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+    ai_flag  = os.getenv("AI_ENABLED", "true").lower()
+    _out({"enabled": bool(groq_key) and ai_flag != "false"})
+
+
 def cmd_news(args):
     from data.news_feed import get_news
     symbol = getattr(args, "symbol", None)
@@ -451,6 +460,7 @@ COMMANDS = {
     "summary":     cmd_summary,
     "optimizer":   cmd_optimizer,
     "rebalance":   cmd_rebalance,
+    "ai-status":        cmd_ai_status,
     "ai-summary":       cmd_ai_summary,
     "recommend":        cmd_recommend,
     "ai-allocation":    cmd_ai_allocation,

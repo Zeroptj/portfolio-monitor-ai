@@ -13,7 +13,7 @@ sys.path.insert(0, ENGINE_DIR)
 
 from portfolio.holdings import SessionLocal, Price, PriceHistory, init_db
 
-with open(os.path.join(ROOT_DIR, "config.yaml"), "r", encoding="utf-8") as f:
+with open(os.path.join(ENGINE_DIR, "config.yaml"), "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
 COINGECKO_IDS: dict[str, str] = {

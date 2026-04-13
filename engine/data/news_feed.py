@@ -19,7 +19,7 @@ sys.path.insert(0, ENGINE_DIR)
 
 load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
-with open(os.path.join(ROOT_DIR, "config.yaml"), "r", encoding="utf-8") as f:
+with open(os.path.join(ENGINE_DIR, "config.yaml"), "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
 NEWS_CFG = config["news"]

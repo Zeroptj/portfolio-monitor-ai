@@ -11,7 +11,7 @@ import { spawn }  from "child_process"
 import path       from "path"
 import fs         from "fs"
 
-const FASTAPI_BASE = process.env.FASTAPI_URL ?? "http://127.0.0.1:8000"
+const FASTAPI_BASE = process.env.FASTAPI_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000"
 const ENGINE_DIR   = path.join(process.cwd(), "..", "engine")
 
 // Remote URL (production: Fly.io) — always use FastAPI, no subprocess fallback
@@ -196,6 +196,10 @@ async function callFastAPI(
         return await apiFetch("GET", `${base}/ai/allocation`)
       case "ai-optimizer":
         return await apiFetch("POST", `${base}/ai/optimizer-advice`, { model: "all" })
+
+      // AI status
+      case "ai-status":
+        return await apiFetch("GET", `${base}/ai/status`)
 
       // News
       case "news": {

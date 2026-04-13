@@ -11,7 +11,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-with open("../config.yaml", "r", encoding="utf-8") as f:
+_ENGINE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+with open(os.path.join(_ENGINE_DIR, "config.yaml"), "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
 # สร้าง database — DATABASE_URL env var ใช้ตอน deploy (Fly.io volume: sqlite:////data/portfolio.db)

@@ -23,7 +23,7 @@ sys.path.insert(0, ENGINE_DIR)
 
 from portfolio.holdings import SessionLocal, ETFHolding, ETFAllocation, init_db
 
-with open(os.path.join(ROOT_DIR, "config.yaml"), "r", encoding="utf-8") as f:
+with open(os.path.join(ENGINE_DIR, "config.yaml"), "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
 DEFAULT_EXCHANGE = "arcx"

@@ -15,10 +15,12 @@ RUN playwright install chromium
 
 COPY . .
 
-# Persistent volume จะถูก mount ที่ /data โดย Fly.io
+
+# Persistent volume  mount ที่ /data โดย Fly.io
 RUN mkdir -p /data
 
 ENV DATABASE_URL=sqlite:////data/portfolio.db
+ENV PYTHONPATH=/app
 
 EXPOSE 8080
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

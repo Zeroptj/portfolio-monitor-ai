@@ -22,7 +22,7 @@ from portfolio.holdings import SessionLocal, Holding, AISummary, init_db
 from data.price_feed import get_prices
 from portfolio.metrics import get_portfolio_metrics
 
-with open(os.path.join(ROOT_DIR, "config.yaml"), "r", encoding="utf-8") as f:
+with open(os.path.join(ENGINE_DIR, "config.yaml"), "r", encoding="utf-8") as f:
     config = yaml.safe_load(f)
 
 AI_CFG = config["ai"]
