@@ -298,6 +298,74 @@ ai:
 
 ---
 
+## Screenshots
+
+### Dashboard
+![Dashboard](frontend/public/Portfolio%20Monitor1.jpg)
+
+Full portfolio overview in a single view:
+- **Portfolio** — Total value, cost basis, P&L (amount + %), overall return
+- **Risk Metrics** — Total Return, Ann. Return, Sharpe Ratio, Max Drawdown
+- **VS SPY** — Alpha, Beta, Correlation, and Benchmark Return vs. S&P 500
+- **Top Positions** — Top 5 holdings by weight with individual P&L
+- **AI Summary** — Daily AI-generated portfolio summary with a chat box for follow-up questions
+
+---
+
+### Holdings
+![Holdings](frontend/public/Portfolio%20Monitor2.jpg)
+
+Manage all positions in two sections:
+- **Live Positions** — Real-time price, value, P&L, P&L %, and weight for each asset
+- **Holdings Table** — Add or delete holdings; click Refresh Data to fetch latest prices and price history
+
+---
+
+### Performance
+![Performance](frontend/public/Portfolio%20Monitor3.png)
+
+In-depth return analysis with a period selector (1M / 3M / 6M / 1Y / 2Y):
+- **Returns** — Total Return, Ann. Return, P&L, P&L %
+- **Risk** — Sharpe Ratio, Volatility, Max Drawdown, Duration (days)
+- **VS SPY** — Alpha, Beta, Correlation, Benchmark Return
+- **Returns Comparison** — Bar chart comparing portfolio return vs. benchmark across periods
+
+---
+
+### Allocation
+![Allocation](frontend/public/Portfolio%20Monitor4.jpg)
+
+Asset distribution breakdown with an automatic AI Allocation Insight:
+- **Donut Charts** — Breakdown by Asset Type (ETF / Crypto / Stock) and by individual asset
+- **Weight by Asset** — Bar chart of each asset's portfolio weight
+- **Weight by Sector** — Sector weights derived from ETF holdings (Morningstar)
+- **Fixed Income Exposure** — Bond/Treasury exposure via ETF holdings
+- **Weight by Region** — Geographic distribution (US, Asia, Europe, etc.)
+- **ETF Holdings Breakdown** — Top holdings for each ETF (SPY, VT, TLH) with % weight
+
+---
+
+### Optimizer
+![Optimizer](frontend/public/Portfolio%20Monitor5.jpg)
+
+Portfolio optimization across 5 models:
+- **Current Drift** — Shows how far the portfolio has drifted from its target, with a Rebalance Needed / OK status
+- **AI Optimizer Advice** — AI recommendation on the best-fit model based on investor style and risk tolerance
+- **Model Comparison** — Expected Return, Volatility, and Sharpe for all 5 models (Max Sharpe, HRP, Min Vol, Risk Parity, Equal Weight)
+- **Weights Chart** — Bar chart of target weights for the selected model
+- **Rebalance Plan** — Action table (BUY / SELL) with Current %, Target %, and Diff % per asset
+
+---
+
+### News Feed
+![News](frontend/public/Portfolio%20Monitor6.png)
+
+Market news filtered by portfolio holdings:
+- **Symbol Filter** — Click a symbol tag (ALL / BTC / BRK-B / SPY / VT / etc.) to filter news by asset
+- **News Articles** — Headlines, source, and date — fetched from NewsAPI and cached once per day
+
+---
+
 ## Optimizer Models
 
 | Model | Description |
